@@ -1,0 +1,131 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+
+# -----------------------------
+# 1) Sample banking dataset
+# -----------------------------
+data = {
+    'CustomerID': [201, 202, 203, 204, 205],
+    'AccountBalance': [5000, 1200, 8500, 300, 4200],
+    'CreditScore': [750, 580, 820, 450, 680],
+    'TransactionFrequency': [15, 5, 25, 2, 12],
+    'LoanAmount': [20000, 5000, 35000, 1000, 15000],
+    'DefaultRisk': ['No', 'Yes', 'No', 'Yes', 'No']
+}
+
+df = pd.DataFrame(data)
+
+# -----------------------------
+# 2) Prepare features and target
+# -----------------------------
+X = df[['AccountBalance', 'CreditScore', 'TransactionFrequency', 'LoanAmount']]
+y = df['DefaultRisk'].map({'No': 0, 'Yes': 1})  # Encode target variable
+
+X_train, X_test, y_train, y_test = train_test_split(X, y,
+                                                    test_size=0.3,
+                                                    random_state=42)
+
+# -----------------------------
+# 3) Train a simple ML model (Decision Tree)
+# -----------------------------
+model = DecisionTreeClassifier(random_state=42)
+model.fit(X_train, y_train)
+
+# -----------------------------
+# 4) Decision support function (ML + rules)
+# -----------------------------
+def decision_support(new_customer_dict,
+                     prob_weight=0.7,
+                     rule_weight=0.3,
+                     prob_threshold=0.50):
+    """
+    new_customer_dict: dict with keys: AccountBalance, CreditScore, 
+    TransactionFrequency, LoanAmount
+    Returns a dict with model probability, triggered rules, 
+    combined risk score and recommended action.
+    """
+    cols = ['AccountBalance', 'CreditScore', 'TransactionFrequency', 'LoanAmount']
+    customer_row = {k: new_customer_dict.get(k, np.nan) for k in cols}
+
+    if pd.isna(customer_row['LoanAmount']):
+        customer_row['LoanAmount'] = df['LoanAmount'].mean()
+
+    X_input = pd.DataFrame([customer_row], columns=cols)
+
+    # 1) ML model probability
+    proba = model.predict_proba(X_input)[0][1]  # probability of DefaultRisk=1
+
+    # 2) Simple rule-based checks
+    rules = {
+        'low_balance': X_input.at[0, 'AccountBalance'] < 2000,
+        'low_credit': X_input.at[0, 'CreditScore'] < 600,
+        'low_transactions': X_input.at[0, 'TransactionFrequency'] < 5,
+        'high_loan': X_input.at[0, 'LoanAmount'] > 20000
+    }
+
+    triggered = {k: int(v) for k, v in rules.items()}
+    rule_score = sum(triggered.values()) / len(triggered)
+
+    # 3) Combined risk score (weighted)
+    risk_score = prob_weight * proba + rule_weight * rule_score
+
+    # 4) Recommendation logic
+    if risk_score >= 0.75:
+        recommendation = "High Default Risk — Immediate Financial Review"
+        action_plan = [
+            "Contact customer for debt restructuring options",
+            "Freeze new loan approvals temporarily",
+            "Assign financial advisor for personalized support"
+        ]
+    elif risk_score >= prob_threshold:
+        recommendation = "Moderate Risk — Monitor and Support"
+        action_plan = [
+            "Offer credit improvement programs",
+            "Monitor transactions and repayment history closely",
+            "Schedule financial counseling within 2 weeks"
+        ]
+    else:
+        recommendation = "Low Risk — Stable Customer"
+        action_plan = [
+            "Continue normal account monitoring",
+            "Offer loyalty benefits for consistent payments",
+            "Encourage use of financial products responsibly"
+        ]
+
+    result = {
+        'model_probability': round(float(proba), 3),
+        'rule_triggers': triggered,
+        'rule_score': round(float(rule_score), 3),
+        'risk_score': round(float(risk_score), 3),
+        'recommendation': recommendation,
+        'action_plan': action_plan
+    }
+    return result
+
+# -----------------------------
+# 5) Test the decision support system
+# -----------------------------
+new_customer = {
+    'AccountBalance': 1000,
+    'CreditScore': 550,
+    'TransactionFrequency': 3,
+    'LoanAmount': 25000
+}
+
+result = decision_support(new_customer)
+
+print("\n" + "="*50)
+print("CUSTOMER DEFAULT RISK ASSESSMENT RESULTS")
+print("="*50)
+print(f"Model Probability: {result['model_probability']}")
+print(f"Rule Triggers: {result['rule_triggers']}")
+print(f"Rule Score: {result['rule_score']}")
+print(f"Combined Risk Score: {result['risk_score']}")
+print(f"Recommendation: {result['recommendation']}")
+print("\nAction Plan:")
+for i, action in enumerate(result['action_plan'], 1):
+    print(f"  {i}. {action}")
+print("="*50)
+

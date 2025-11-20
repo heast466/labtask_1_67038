@@ -1,0 +1,130 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+
+# -----------------------------
+# 1) Sample grocery dataset
+# -----------------------------
+data = {
+    'CustomerID': [1, 2, 3, 4, 5, 6, 7],
+    'WeeklyVisits': [2, 1, 3, 4, 1, 2, 5],
+    'AvgSpend': [45, 120, 75, 35, 150, 90, 25],
+    'LoyaltyScore': [3, 8, 5, 2, 9, 6, 1],
+    'PreferredTime': ['Morning', 'Evening', 'Afternoon', 'Morning', 'Evening', 'Afternoon', 'Morning'],
+    'CustomerScore': [55, 88, 70, 40, 92, 76, 30],  # Added a numerical feature like HealthScore
+    'HighValue': ['No', 'Yes', 'No', 'No', 'Yes', 'No', 'No']
+}
+df = pd.DataFrame(data)
+
+# -----------------------------
+# 2) Prepare features and target
+# -----------------------------
+X = df[['WeeklyVisits', 'AvgSpend', 'LoyaltyScore', 'CustomerScore']]
+y = df['HighValue'].map({'No': 0, 'Yes': 1})  # encode target
+
+X_train, X_test, y_train, y_test = train_test_split(X, y,
+                                                    test_size=0.3,
+                                                    random_state=42)
+
+# -----------------------------
+# 3) Train a simple ML model (Decision Tree)
+# -----------------------------
+model = DecisionTreeClassifier(random_state=42)
+model.fit(X_train, y_train)
+
+# -----------------------------
+# 4) Decision support function (ML + rules)
+# -----------------------------
+def decision_support(new_customer_dict,
+                     prob_weight=0.7,
+                     rule_weight=0.3,
+                     prob_threshold=0.50):
+    """
+    new_customer_dict: dict with keys: WeeklyVisits, AvgSpend, 
+    LoyaltyScore, CustomerScore
+    Returns a dict with model probability, triggered rules, 
+    combined risk score and recommended action.
+    """
+    cols = ['WeeklyVisits', 'AvgSpend', 'LoyaltyScore', 'CustomerScore']
+    customer_row = {k: new_customer_dict.get(k, np.nan) for k in cols}
+
+    if pd.isna(customer_row['CustomerScore']):
+        customer_row['CustomerScore'] = df['CustomerScore'].mean()
+
+    X_input = pd.DataFrame([customer_row], columns=cols)
+
+    # 1) ML model probability
+    proba = model.predict_proba(X_input)[0][1]  # probability of HighValue=1
+
+    # 2) Simple business rules
+    rules = {
+        'low_visits': X_input.at[0, 'WeeklyVisits'] < 2,
+        'low_spend': X_input.at[0, 'AvgSpend'] < 50,
+        'low_loyalty': X_input.at[0, 'LoyaltyScore'] < 4,
+        'low_customerscore': X_input.at[0, 'CustomerScore'] < 60
+    }
+
+    triggered = {k: int(v) for k, v in rules.items()}
+    rule_score = sum(triggered.values()) / len(triggered)
+
+    # 3) Combine model + rules
+    risk_score = prob_weight * proba + rule_weight * rule_score
+
+    # 4) Recommendation
+    if risk_score >= 0.75:
+        recommendation = "High Value Customer — Offer Premium Rewards"
+        action_plan = [
+            "Send personalized premium discount",
+            "Invite to loyalty program VIP tier",
+            "Offer exclusive early access to deals"
+        ]
+    elif risk_score >= prob_threshold:
+        recommendation = "Moderate Value Customer — Encourage More Engagement"
+        action_plan = [
+            "Send targeted promotions based on preferences",
+            "Offer double loyalty points this month",
+            "Send satisfaction feedback survey"
+        ]
+    else:
+        recommendation = "Low Value Customer — Basic Monitoring"
+        action_plan = [
+            "Send welcome coupons or general offers",
+            "Encourage store visits via SMS/email",
+            "Monitor spending pattern quarterly"
+        ]
+
+    result = {
+        'model_probability': round(float(proba), 3),
+        'rule_triggers': triggered,
+        'rule_score': round(float(rule_score), 3),
+        'risk_score': round(float(risk_score), 3),
+        'recommendation': recommendation,
+        'action_plan': action_plan
+    }
+    return result
+
+# -----------------------------
+# 5) Test the decision support system
+# -----------------------------
+new_customer = {
+    'WeeklyVisits': 1,
+    'AvgSpend': 40,
+    'LoyaltyScore': 3,
+    'CustomerScore': 50
+}
+
+result = decision_support(new_customer)
+
+print("\n" + "="*50)
+print("CUSTOMER VALUE ASSESSMENT RESULTS")
+print("="*50)
+print(f"Model Probability: {result['model_probability']}")
+print(f"Rule Triggers: {result['rule_triggers']}")
+print(f"Rule Score: {result['rule_score']}")
+print(f"Combined Risk Score: {result['risk_score']}")
+print(f"Recommendation: {result['recommendation']}")
+print("\nAction Plan:")
+for i, action in enumerate(result['action_plan'], 1):
+    print(f"  {i}. {action}")
+print("="*50)

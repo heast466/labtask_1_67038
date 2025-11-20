@@ -1,0 +1,125 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+# -----------------------------
+# 1) Sample dataset (same small example)
+# -----------------------------
+data = {
+    'PatientID': [101, 102, 103, 104, 105],
+    'AppointmentAttendance': [88, 72, 96, 58, 82],
+    'MedicationAdherence': [9, 5, 10, 3, 8],
+    'ExerciseFrequency': [8, 4, 10, 2, 7],
+    'Blood_Pressure': ['140/90', '130/85', '135/93', '160/100', '125/80'],  # Added comma and 5th value
+    'HealthScore': [87, 62, 95, 45, 75],
+    'HealthRisk': ['No', 'Yes', 'No', 'Yes', 'No']
+}
+df = pd.DataFrame(data)
+# -----------------------------
+# 2) Prepare features and target
+# -----------------------------
+X = df[['AppointmentAttendance', 'MedicationAdherence', 'ExerciseFrequency', 'HealthScore']]
+y = df['HealthRisk'].map({'No': 0, 'Yes': 1}) # encode target
+# Train/test split (for completeness; small dataset)
+X_train, X_test, y_train, y_test = train_test_split(X, y,
+test_size=0.3, random_state=42)
+# -----------------------------
+# 3) Train a simple ML model (Decision Tree)
+# -----------------------------
+model = DecisionTreeClassifier(random_state=42)
+model.fit(X_train, y_train)
+# -----------------------------
+# 4) Decision support function (combines ML probability + simple rules)
+# -----------------------------
+def decision_support(new_student_dict,
+                     prob_weight=0.7, # weight assigned to ML model probability
+                     rule_weight=0.3, # weight assigned to rule-based signals
+                     prob_threshold=0.50):
+    """
+    new_student_dict: dict with keys: AppointmentAttendance, MedicationAdherence, 
+    ExerciseFrequency, HealthScore (final optional)
+    Returns a dict with model probability, triggered rules, combined
+    risk score and recommended action.
+    """
+    # ensure DataFrame with correct columns to avoid warnings
+    cols = ['AppointmentAttendance', 'MedicationAdherence', 'ExerciseFrequency', 'HealthScore']
+    student_row = {k: new_student_dict.get(k, np.nan) for k in cols}
+    if pd.isna(student_row['HealthScore']):
+        student_row['HealthScore'] = df['HealthScore'].mean()
+    X_input = pd.DataFrame([student_row], columns=cols)
+
+    # 1) ML model probability
+    proba = model.predict_proba(X_input)[0][1] # probability of AtRisk=1
+
+    # 2) Rule-based checks (simple, interpretable rules)
+    rules = {
+        'low_attendance': X_input.at[0, 'AppointmentAttendance'] < 70,
+        'low_medication': X_input.at[0, 'MedicationAdherence'] < 5,
+        'low_exercise': X_input.at[0, 'ExerciseFrequency'] < 4,
+        'low_healthscore': X_input.at[0, 'HealthScore'] < 60
+    }
+    # convert boolean rules to numeric scores (1 if triggered else 0)
+    triggered = {k: int(v) for k, v in rules.items()}
+    rule_score = sum(triggered.values()) / len(triggered) # fraction of triggered rules (0..1)
+
+    # 3) Combined risk score: weighted sum (customizable)
+    risk_score = prob_weight * proba + rule_weight * rule_score
+
+    # 4) Recommendation logic (maps risk_score to action)
+    if risk_score >= 0.75:
+        recommendation = "High Risk — Immediate Intervention"
+        action_plan = [
+            "Arrange counseling within 48 hours",
+            "Assign academic mentor & weekly check-ins",
+            
+            "Notify program coordinator"
+        ]
+    elif risk_score >= prob_threshold:
+        recommendation = "Moderate Risk — Targeted Support"
+        action_plan = [
+            "Schedule meeting with student & advisor within 1 week",
+            "Recommend tutoring/workshop and monitor progress",
+            "Set up 2-week check-in"
+        ]
+    else:
+        recommendation = "Low Risk — Monitor"
+        action_plan = [
+            "Encourage regular study habits",
+            "Periodic monitoring (monthly)",
+            "Provide resource links / optional workshops"
+        ]
+
+    result = {
+        'model_probability': round(float(proba), 3),
+        'rule_triggers': triggered,
+        'rule_score': round(float(rule_score), 3),
+        'risk_score': round(float(risk_score), 3),
+        'recommendation': recommendation,
+        'action_plan': action_plan
+    }
+    return result
+# -----------------------------
+# 5) Test the decision support system
+# -----------------------------
+
+# Test with a new patient
+new_patient = {
+    'AppointmentAttendance': 65,
+    'MedicationAdherence': 4,
+    'ExerciseFrequency': 3,
+    'HealthScore': 5
+}
+
+result = decision_support(new_patient)
+print("\n" + "="*50)
+print("HEALTH RISK ASSESSMENT RESULTS")
+print("="*50)
+print(f"Model Probability: {result['model_probability']}")
+print(f"Rule Triggers: {result['rule_triggers']}")
+print(f"Rule Score: {result['rule_score']}")
+print(f"Combined Risk Score: {result['risk_score']}")
+print(f"Recommendation: {result['recommendation']}")
+print("\nAction Plan:")
+for i, action in enumerate(result['action_plan'], 1):
+    print(f"  {i}. {action}")
+print("="*50)
