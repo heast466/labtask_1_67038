@@ -1,0 +1,54 @@
+# LOGISTIC REGRESSION ON diabetes.dat (ALL TASKS)
+# =========================================================
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import sympy as sp
+from scipy.optimize import curve_fit
+
+# ---------- STEP 1: Load and clean diabetes.dat ----------
+df = pd.read_csv("diabetes.dat", comment='@', header=None, delim_whitespace=True)
+
+# Remove trailing commas and convert to float
+for col in df.columns:
+    df[col] = df[col].astype(str).str.replace(',', '').astype(float)
+
+# First feature as X, last column as y
+X = df.iloc[:, 0].values
+y = df.iloc[:, -1].values
+
+# ---------- STEP 2: Declare Logistic Function ----------
+def logistic(x, b0, b1):
+    return 1 / (1 + np.exp(-(b0 + b1 * x)))
+
+# ---------- STEP 3: Plot Symbolic Logistic Function (SymPy) ----------
+x = sp.symbols('x')
+logistic_sympy = 1 / (1 + sp.exp(-(0 + 1*x)))  # example with b0=0, b1=1
+
+sp.plot(
+    logistic_sympy,
+    (x, -10, 10),  # fixed range like you requested
+    title="Logistic Function (SymPy)",
+    xlabel="x",
+    ylabel="f(x)"
+)
+
+# ---------- STEP 4: Fit Logistic Regression using SciPy ----------
+params, _ = curve_fit(logistic, X, y, p0=[0,0])
+b0_est, b1_est = params
+print("Estimated Parameters:")
+print("b0 =", b0_est)
+print("b1 =", b1_est)
+
+# ---------- STEP 5: Plot Fitted Logistic Curve ----------
+x_vals = np.linspace(X.min(), X.max(), 300)
+y_pred = logistic(x_vals, b0_est, b1_est)
+
+plt.scatter(X, y, alpha=0.4, label="Actual Data")
+plt.plot(x_vals, y_pred, color='red', linewidth=2, label="Fitted Logistic Curve")
+plt.xlabel("Feature 1")
+plt.ylabel("Probability of Diabetes")
+plt.title("Logistic Regression on diabetes.dat")
+plt.legend()
+plt.show()
