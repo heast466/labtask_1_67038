@@ -1,0 +1,206 @@
+# TASK 1: KNN CLASSIFICATION on diabetes.dat (ALL metrics in ONE block)
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    confusion_matrix,
+    ConfusionMatrixDisplay
+)
+
+
+# Load dataset
+
+df = pd.read_csv("diabetes.dat", comment='@', header=None)
+df.columns = ["Age", "Deficit", "C_peptide"]
+
+
+# Convert target to CLASS (Binary)
+
+# 0 = Low C_peptide, 1 = High C_peptide
+df["C_peptide_class"] = (df["C_peptide"] > df["C_peptide"].median()).astype(int)
+
+X = df[["Age", "Deficit"]]
+y = df["C_peptide_class"]
+
+# Train-Test Split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# Train & Evaluate KNN Classifier
+for k in [1, 5, 10]:
+    knn = KNeighborsClassifier(n_neighbors=k)
+    knn.fit(X_train, y_train)
+    y_pred = knn.predict(X_test)
+
+    # Metrics
+    acc = accuracy_score(y_test, y_pred)
+    prec = precision_score(y_test, y_pred)
+    rec = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+
+    print(f"\nKNN Classifier (k={k})")
+    print(f"Accuracy  : {acc:.3f}")
+    print(f"Precision : {prec:.3f}")
+    print(f"Recall    : {rec:.3f}")
+    print(f"F1-Score  : {f1:.3f}")
+
+    # Confusion Matrix
+    cm = confusion_matrix(y_test, y_pred)
+    disp = ConfusionMatrixDisplay(
+        confusion_matrix=cm,
+        display_labels=["Low C_peptide", "High C_peptide"]
+    )
+    disp.plot()
+    plt.title(f"Confusion Matrix (k={k})")
+    plt.show()
+
+
+
+
+# TASK 2: Linear Regression on diabetes.dat (All tasks in ONE block)
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+
+
+# Load dataset
+
+df = pd.read_csv("diabetes.dat", comment='@', header=None)
+
+# Separate inputs and output
+X = df.values[:, :-1]   # features
+Y = df.values[:, -1]    # target
+
+
+# Train Linear Regression model
+
+model = LinearRegression()
+model.fit(X, Y)
+
+m = model.coef_          # slopes (one per feature)
+b = model.intercept_    # intercept
+
+print("Slopes (m):", m)
+print("Intercept (b):", b)
+
+
+# Predictions
+
+Y_pred = model.predict(X)
+
+
+# Residuals
+
+residuals = Y - Y_pred
+print("\nFirst 10 Residuals:")
+for i in range(10):
+    print(residuals[i])
+
+# Sum of Squared Errors (SSE)
+sse = sum(residuals ** 2)
+print("\nSum of Squared Errors (SSE):", sse)
+
+# Mean Squared Error (MSE)
+mse = mean_squared_error(Y, Y_pred)
+print("Mean Squared Error (MSE):", mse)
+
+# Train-Test Split (Validation)
+
+X_train, X_test, Y_train, Y_test = train_test_split(
+    X, Y, test_size=0.2, random_state=42
+)
+
+model.fit(X_train, Y_train)
+Y_test_pred = model.predict(X_test)
+
+test_mse = mean_squared_error(Y_test, Y_test_pred)
+print("Test MSE:", test_mse)
+
+# Plot: Actual vs Predicted
+
+plt.scatter(Y, Y_pred)
+plt.xlabel("Actual Values")
+plt.ylabel("Predicted Values")
+plt.title("Actual vs Predicted (Linear Regression)")
+plt.show()
+
+
+
+
+# STEP 1: Problem Definition
+# Predict C_peptide values using Age and Deficit
+# using Linear Regression
+
+# STEP 2: Import Required Libraries
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+
+# STEP 3: Load the Dataset
+df = pd.read_csv(
+    "diabetes.dat",
+    comment='@',
+    header=None
+)
+
+df.columns = ["Age", "Deficit", "C_peptide"]
+
+# STEP 4: Explore the Data
+print(df.head())
+
+# STEP 5: Define Features (X) and Target (y)
+X = df.drop(['C_peptide'], axis=1)   # Age, Deficit
+y = df['C_peptide']                 # Continuous target
+
+# STEP 6: Split Data into Training and Testing Sets
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=0.2,
+    random_state=42
+)
+
+# STEP 7: Train Linear Regression Model
+lr = LinearRegression()
+lr.fit(X_train, y_train)
+
+# Coefficients and Intercept
+m = lr.coef_
+b = lr.intercept_
+
+print("Coefficients (m):", m)
+print("Intercept (b):", b)
+
+# Predictions
+y_pred = lr.predict(X_test)
+
+# STEP 8: Evaluate Model
+mse = mean_squared_error(y_test, y_pred)
+mae = mean_absolute_error(y_test, y_pred)
+
+print(f"Linear Regression -> MSE: {mse:.3f}, MAE: {mae:.3f}")
+
+# STEP 9: Visualize Actual vs Predicted
+plt.figure(figsize=(6, 4))
+plt.scatter(y_test, y_pred, alpha=0.7, edgecolors='k')
+plt.plot(
+    [y_test.min(), y_test.max()],
+    [y_test.min(), y_test.max()],
+    'r--'
+)
+plt.xlabel("Actual C_peptide")
+plt.ylabel("Predicted C_peptide")
+plt.title("Linear Regression: Actual vs Predicted")
+plt.show()
