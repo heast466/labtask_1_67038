@@ -1,3 +1,4 @@
+# =========================================================
 # LOGISTIC REGRESSION ON diabetes.dat (ALL TASKS)
 # =========================================================
 
@@ -51,4 +52,48 @@ plt.xlabel("Feature 1")
 plt.ylabel("Probability of Diabetes")
 plt.title("Logistic Regression on diabetes.dat")
 plt.legend()
+plt.show()
+
+
+
+
+# =========================================================
+# K-MEANS CLUSTERING AND RAND INDEX ON diabetes.dat
+# =========================================================
+
+import numpy as np
+import pandas as pd
+from sklearn.cluster import KMeans
+from sklearn.metrics import rand_score
+
+# ---------- STEP 1: Load and clean diabetes.dat ----------
+df = pd.read_csv("diabetes.dat", comment='@', header=None, delim_whitespace=True)
+
+# Remove trailing commas and convert to float
+for col in df.columns:
+    df[col] = df[col].astype(str).str.replace(',', '').astype(float)
+
+# Features (X) = all columns except last, Target (y) = last column
+X = df.iloc[:, :-1].values
+y = df.iloc[:, -1].values  # Binary target: 0 or 1
+
+# ---------- STEP 2: Apply K-Means Clustering ----------
+k = 2  # We know the target is binary
+kmeans = KMeans(n_clusters=k, random_state=42)
+clusters = kmeans.fit_predict(X)
+
+# ---------- STEP 3: Compute Rand Index ----------
+R = rand_score(y, clusters)
+
+# ---------- STEP 4: Print results ----------
+print("Cluster labels (unique):", np.unique(clusters))
+print("Rand Index R =", R)
+
+# Optional: visualize clustering (first 2 features only)
+import matplotlib.pyplot as plt
+
+plt.scatter(X[:, 0], X[:, 1], c=clusters, cmap='viridis', alpha=0.6)
+plt.xlabel("Feature 1")
+plt.ylabel("Feature 2")
+plt.title("K-Means Clustering on diabetes.dat")
 plt.show()
