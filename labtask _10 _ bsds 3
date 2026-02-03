@@ -1,0 +1,30 @@
+import pandas as pd
+import numpy as np
+
+# Load dataset
+data = pd.read_csv("ACCIDENTS_GU_BCN_2013.csv", encoding="latin1")
+
+# Calculate daily accident counts
+daily_accidents = (
+    data.groupby(['NK Any', 'Mes de any', 'Dia de mes'])
+    .size()
+    .reset_index(name='Daily_Accidents')
+)
+
+# Take a random sample of 100 days
+sample = daily_accidents['Daily_Accidents'].sample(n=100, random_state=42)
+
+# Sample statistics
+mean = sample.mean()
+std = sample.std(ddof=1)
+n = len(sample)
+se = std / np.sqrt(n)
+
+# 99% confidence interval
+z_99 = 2.58
+ci_lower = mean - z_99 * se
+ci_upper = mean + z_99 * se
+
+# Print clean output
+print("Sample Mean (Daily Accidents):", round(float(mean), 3))
+print("99% Confidence Interval:", (round(float(ci_lower), 3), round(float(ci_upper), 3)))
